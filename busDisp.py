@@ -1,42 +1,54 @@
-import urllib.request
-import re
+import os
+import urllib.request as UL
+import xml.etree.ElementTree as ET
 
-show_all_lines = 'on'
-direction = 'INBOUND'
+key = os.getenv('BUSTIME_API_KEY')
 
-def getArrivals(bus_lines,stop_numbers):
-    extracted_data, line_data, clean_data, time_data = [[],[],[],[]]
+# Access data through the official Port Authority API (reccomended)
+# Gets all buses and their predicted arrivals at specified stops
+def getAllArrivalsAPI(stop_numbers):
+    # Convert list to csv string
+    stop_numbers_string = ','.join(stop_numbers)
 
-    # Scrape Port Authority website for departures and clean up into useable data
-    for x in range(len(bus_lines)):
-        URL = 'https://truetime.portauthority.org/bustime/wireless/html/eta.jsp?route=Port+Authority+Bus%3A'+bus_lines[x]+\
-        '&direction=Port+Authority+Bus%3A'+direction+'&id=Port+Authority+Bus%3A'+stop_numbers[x]+'&showAllBusses='+show_all_lines
+    # Build URL for API call
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?key='+key+'&rtpidatafeed=Port%20Authority%20Bus&stpid='+stop_numbers_string
 
-        with urllib.request.urlopen(URL) as response:
-            html = response.read().decode('utf-8')
+    # Get XML response and parse
+    XML = UL.urlopen(URL).read()
+    root = ET.fromstring(XML)
 
-        extracted_data = re.findall('(?<=<strong class="larger">).*?(?=</strong>)',html)
-        clean_data = [x.replace('&nbsp;', '').replace('#','').replace('MIN','').replace('DUE','0') for x in extracted_data]
+    # Extract necessary data from parsed XML
+    routes, times = [[],[]]
+    for bus in root.findall('prd'):
+        routes.append(bus.find('rt').text)
+        times.append(bus.find('prdctdn').text)
+    
+    return routes,times
+    
 
-        line_data += clean_data[::2]
-        time_data += clean_data[1::2]
+# Access data through the official Port Authority API (reccomended)
+# Gets certain bus lines and their predicted arrivals at specified stops
+def getSpecificArrivalsAPI(bus_lines,stop_numbers):
+    # Convert list to csv string
+    stop_numbers_string = ','.join(stop_numbers)
+    bus_lines_string = ','.join(bus_lines)
 
-    # Convert time strings into ints for sorting
-    time_data_int = [eval(x) for x in time_data]
+    # Build URL for API call
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?key='+key+'&rtpidatafeed=Port%20Authority%20Bus&stpid='+stop_numbers_string\
+        +'&rt='+bus_lines_string
 
-    # Sort both lists by arrival time
-    # Handle case of no buses coming
-    try:
-        time_data_sorted, line_data_sorted = map(list, zip(*sorted(zip(time_data_int,line_data), reverse=False)))
-    except ValueError:
-        time_data_sorted, line_data_sorted = [[],['None :(']]
+    # Get XML response and parse
+    XML = UL.urlopen(URL).read()
+    root = ET.fromstring(XML)
 
-    return line_data_sorted, time_data_sorted
+    # Extract necessary data from parsed XML
+    routes, times = [[],[]]
+    for bus in root.findall('prd'):
+        routes.append(bus.find('rt').text)
+        times.append(bus.find('prdctdn').text)
+    
+    return routes,times
 
-apt_lines, apt_times = getArrivals(['71B','71D'],['3140','8312'])
-
-# Replace 0 with DUE
-apt_times = [x if x != 0 else 'DUE' for x in apt_times]
-
-print(apt_lines)
-print(apt_times)
+routes, times = getSpecificArrivalsAPI(['71B','71D'],['3140','8312'])
+routes, times = getAllArrivalsAPI(['3140','8312'])
+print(routes,times)
