@@ -1,32 +1,30 @@
 import os
-import urllib.request as UL
 import xml.etree.ElementTree as ET
+import requests
+import json
 
 key = os.getenv('BUSTIME_API_KEY')
 
-# Access data through the official Port Authority API (reccomended)
+# Access data through the official Port Authority API
 # Gets all buses and their predicted arrivals at specified stops
 def getAllArrivalsAPI(stop_numbers):
     # Convert list to csv string
     stop_numbers_string = ','.join(stop_numbers)
-
     # Build URL for API call
-    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?key='+key+'&rtpidatafeed=Port%20Authority%20Bus&stpid='+stop_numbers_string
+    ploads = {'key':key,'stpid':stop_numbers_string,'format':'json','rtpidatafeed':'Port Authority Bus'}
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions'
+
 
     # Get XML response and parse
-    XML = UL.urlopen(URL).read()
-    root = ET.fromstring(XML)
+    raw = requests.get(URL,ploads).json()['bustime-response']['prd']
+    print(requests.get(URL,ploads).url)
+    routes = [raw[x]['rt'] for x in range(len(raw))]
+    times = [raw[x]['prdctdn'] for x in range(len(raw))]
 
-    # Extract necessary data from parsed XML
-    routes, times = [[],[]]
-    for bus in root.findall('prd'):
-        routes.append(bus.find('rt').text)
-        times.append(bus.find('prdctdn').text)
-    
     return routes,times
-    
 
-# Access data through the official Port Authority API (reccomended)
+
+# Access data through the official Port Authority API
 # Gets certain bus lines and their predicted arrivals at specified stops
 def getSpecificArrivalsAPI(bus_lines,stop_numbers):
     # Convert list to csv string
@@ -34,21 +32,18 @@ def getSpecificArrivalsAPI(bus_lines,stop_numbers):
     bus_lines_string = ','.join(bus_lines)
 
     # Build URL for API call
-    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?key='+key+'&rtpidatafeed=Port%20Authority%20Bus&stpid='+stop_numbers_string\
-        +'&rt='+bus_lines_string
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions'
+    ploads = {'key':key,'stpid':stop_numbers_string,'format':'json','rtpidatafeed':'Port Authority Bus','rt':bus_lines_string}
 
     # Get XML response and parse
-    XML = UL.urlopen(URL).read()
-    root = ET.fromstring(XML)
+    raw = requests.get(URL,ploads).json()['bustime-response']['prd']
+    print(requests.get(URL,ploads).url)
+    routes = [raw[x]['rt'] for x in range(len(raw))]
+    times = [raw[x]['prdctdn'] for x in range(len(raw))]
 
-    # Extract necessary data from parsed XML
-    routes, times = [[],[]]
-    for bus in root.findall('prd'):
-        routes.append(bus.find('rt').text)
-        times.append(bus.find('prdctdn').text)
-    
     return routes,times
 
-routes, times = getSpecificArrivalsAPI(['71B','71D'],['3140','8312'])
 routes, times = getAllArrivalsAPI(['3140','8312'])
-print(routes,times)
+print(routes, times)
+routes, times = getSpecificArrivalsAPI(['71B','71D'],['3140','8312'])
+print(routes, times)
