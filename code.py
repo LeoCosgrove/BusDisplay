@@ -1,37 +1,56 @@
-import adafruit_requests as requests
 import board
 import busio
-from adafruit_esp32spi import adafruit_esp32spi
+import time
 from digitalio import DigitalInOut
-import adafruit_esp32spi.adafruit_esp32spi_socket as socket
+import neopixel
+from adafruit_esp32spi import adafruit_esp32spi
+from adafruit_esp32spi import adafruit_esp32spi_wifimanager
 
-# get wifi details from secrets files
+# Get wifi details and more from a secrets.py file
 try:
     from secrets import secrets
+    key = secrets.get('BUSTIME_API_KEY')
 except ImportError:
-    print('WiFi secrets are kept in secrets.py, please add them there!')
+    print("WiFi secrets are kept in secrets.py, please add them there!")
     raise
 
+# If you are using a board with pre-defined ESP32 Pins:
 esp32_cs = DigitalInOut(board.ESP_CS)
 esp32_ready = DigitalInOut(board.ESP_BUSY)
 esp32_reset = DigitalInOut(board.ESP_RESET)
+
+# Define pins
 spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
 esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
+status_light = neopixel.NeoPixel(
+    board.NEOPIXEL, 1, brightness=0.2
+) 
 
-print("Connecting to AP...")
-while not esp.is_connected:
-    try:
-        esp.connect_AP(secrets["ssid"], secrets["password"])
-    except RuntimeError as e:
-        print("could not connect to AP, retrying: ", e)
-        continue
+# Set up wifi connection
+wifi = adafruit_esp32spi_wifimanager.ESPSPI_WiFiManager(esp, secrets, status_light)
 
-socket.set_interface(esp)
-requests.set_socket(socket, esp)
+# Gets current server time in 24 hr format ex. 23:24:43
+# Usage: time = getTime()
+def getTime():
+    # Build URL for API call
+    URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
+    
+    # Get XML response and parse
+    raw = wifi.get(URL).json()['bustime-response']['tm']
 
-key = secrets["BUSTIME_API_KEY"]
+    return raw.split()[1]
 
-# implement methods here
+# Gets current date ex. 20221031
+# Usage: date = getDate()
+def getDate():
+    # Build URL for API call
+    URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
 
-routes, times = getAllArrivals(['3140','8312'])
-print(routes,times)
+    # Get XML response and parse
+    raw = wifi.get(URL).json()['bustime-response']['tm']
+
+    return raw.split()[0]
+
+while True:
+    print(getTime())
+    time.sleep(2)
