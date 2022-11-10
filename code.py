@@ -1,10 +1,6 @@
 import board
-import busio
 import time
-from digitalio import DigitalInOut
-import neopixel
-from adafruit_esp32spi import adafruit_esp32spi
-from adafruit_esp32spi import adafruit_esp32spi_wifimanager
+from adafruit_matrixportal.matrixportal import MatrixPortal
 
 # Get wifi details and more from a secrets.py file
 try:
@@ -14,20 +10,8 @@ except ImportError:
     print("WiFi secrets are kept in secrets.py, please add them there!")
     raise
 
-# If you are using a board with pre-defined ESP32 Pins:
-esp32_cs = DigitalInOut(board.ESP_CS)
-esp32_ready = DigitalInOut(board.ESP_BUSY)
-esp32_reset = DigitalInOut(board.ESP_RESET)
-
-# Define pins
-spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
-esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
-status_light = neopixel.NeoPixel(
-    board.NEOPIXEL, 1, brightness=0.2
-) 
-
-# Set up wifi connection
-wifi = adafruit_esp32spi_wifimanager.ESPSPI_WiFiManager(esp, secrets, status_light)
+# Set up board
+mp = MatrixPortal(status_neopixel=board.NEOPIXEL,debug=False)
 
 # Gets current server time in 24 hr format ex. 23:24:43
 # Usage: time = getTime()
@@ -36,7 +20,7 @@ def getTime():
     URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
     
     # Get XML response and parse
-    raw = wifi.get(URL).json()['bustime-response']['tm']
+    raw = mp.network.fetch(URL).json()['bustime-response']['tm']
 
     return raw.split()[1]
 
@@ -47,10 +31,79 @@ def getDate():
     URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
 
     # Get XML response and parse
-    raw = wifi.get(URL).json()['bustime-response']['tm']
+    raw = mp.network.fetch(URL).json()['bustime-response']['tm']
 
     return raw.split()[0]
 
+# Gets all buses and their predicted arrivals and directions at specified stops
+# ex. ['71D', '64'], ['DUE', '5'], ['INBOUND', 'INBOUND']
+# Usage: routes, times, directions = getAllArrivals(['3140','8312'])
+def getAllArrivals(stop_numbers):
+    # Convert list to csv string
+    stop_numbers_string = ','.join(stop_numbers)
+
+    # Build URL for API call
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
+    URL += "&stpid=" + stop_numbers_string
+    URL += "&rtpidatafeed=" "Port Authority Bus"
+
+    # Get XML response and parse
+    try:
+        raw = mp.network.fetch(URL).json()['bustime-response']['prd']
+        routes = [x['rt'] for x in raw]
+        times = [x['prdctdn'] for x in raw]
+        directions = [x['rtdir'] for x in raw]
+    except:
+        routes = []
+        times = []
+        directions = []
+
+    return routes, times, directions
+
+
+# Gets certain bus lines and their predicted arrivals and directions at specified stops
+# ex. ['71D'], ['DUE'], ['INBOUND']
+# Usage: routes, times, directions = getSpecificArrivals(['71B','71D'],['3140','8312'])
+def getSpecificArrivals(bus_lines, stop_numbers):
+    # Convert list to csv string
+    stop_numbers_string = ','.join(stop_numbers)
+    bus_lines_string = ','.join(bus_lines)
+
+    # Build URL for API call
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
+    URL += "&stpid=" + stop_numbers_string
+    URL += "&rtpidatafeed=" "Port Authority Bus"
+    URL += "&rt=" + bus_lines_string
+
+    # Get XML response and parse
+    try:
+        raw = mp.network.fetch(URL).json()['bustime-response']['prd']
+        routes = [x['rt'] for x in raw]
+        times = [x['prdctdn'] for x in raw]
+        directions = [x['rtdir'] for x in raw]
+    except:
+        routes = []
+        times = []
+        directions = []
+
+    return routes, times, directions
+
+# Colors for header and arrivals
+colors = [0xFF0000, 0xFF00FF]
+FONT = '/IBMPlexMono-Medium-24_jep.bdf'
+
+mp.add_text(
+    text_font=FONT,
+    text_position=(
+        (mp.graphics.display.width // 2),
+        (mp.graphics.display.height // 2),
+    ),
+    scrolling=True,
+)
+
+mp.set_text('hello world',0)
+
 while True:
-    print(getTime())
-    time.sleep(2)
+    print(getAllArrivals(['3140','8312']))
+    print(getSpecificArrivals(['71B','71D'],['3140','8312']))
+    time.sleep(1)
