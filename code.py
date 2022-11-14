@@ -59,7 +59,7 @@ display.show(setup_group)
 
 # Gets current server time in 24 hr format ex. 23:24:43
 # Usage: time = _get_time()
-def _get_time() -> str:
+def get_time() -> str:
     # Build URL for API call
     URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
     
@@ -70,7 +70,7 @@ def _get_time() -> str:
 
 # Gets current date ex. 20221031
 # Usage: date = _get_date()
-def _get_date() -> str:
+def get_date() -> str:
     # Build URL for API call
     URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
 
@@ -82,7 +82,7 @@ def _get_date() -> str:
 # Gets certain bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = _get_specific_arrivals(['71B','71D'],['3140','8312'])
-def _get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
     stop_num_str = ','.join(stop_numbers)
     bus_line_str = ','.join(bus_lines)
@@ -110,7 +110,7 @@ def _get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple
 # Gets all bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = _get_all_arrivals(['3140','8312'])
-def _get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
     stop_num_str = ','.join(stop_numbers)
 
@@ -134,7 +134,7 @@ def _get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[
     return routes, times, stops
 
 # Refresh the arrivals and print to LED matrix
-def _update_text() -> None:
+def update_text() -> None:
     text_group = displayio.Group()
     header = "LN  STOP  MIN"
     header_area = label.Label(font,text=header,color=colors[0])
@@ -144,9 +144,9 @@ def _update_text() -> None:
 
     # Get data from api call
     if config.get_all_lines:
-        routes, times, stops = _get_all_arrivals(config.stops_to_show)
+        routes, times, stops = get_all_arrivals(config.stops_to_show)
     else:
-        routes, times, stops = _get_specific_arrivals(config.lines_to_show,config.stops_to_show)
+        routes, times, stops = get_specific_arrivals(config.lines_to_show,config.stops_to_show)
 
     if len(routes) == 0:
         # Add route to display (left aligned)
@@ -179,8 +179,8 @@ def _update_text() -> None:
     display.show(text_group)
 
 # Returns whether the screen should be on based on network time
-def _should_be_on() -> bool:
-    today = _get_date()
+def should_be_on() -> bool:
+    today = get_date()
     year = today[:4]
     month = today[4:6]
     day = today[6:8]
@@ -192,7 +192,7 @@ def _should_be_on() -> bool:
     else:
         weekday = day_num <= 5
 
-    current_time = int(_get_time().replace(":",""))
+    current_time = int(get_time().replace(":",""))
     
     if(weekday):
         should_be_on = current_time in range(on_time_weekday,off_time_weekday)
@@ -202,20 +202,20 @@ def _should_be_on() -> bool:
     return should_be_on
     
 # Clear the screen
-def _blank_screen() -> None:
+def blank_screen() -> None:
     text_group = displayio.Group()
     display.show(text_group)
 
 # Main loop
 while True:
     try:
-        if(_should_be_on()):
-            _update_text()
+        if(should_be_on()):
+            update_text()
         else:
-            _blank_screen()
+            blank_screen()
     except:
         print("Error, retrying")
-        continue
+        pass
 
     gc.collect()
     time.sleep(15)
