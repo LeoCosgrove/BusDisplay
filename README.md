@@ -5,6 +5,6 @@ Displays upcoming Pittsburgh bus arrivals at user-defined stops based on data fr
 
 For use with Adafruit Matrix Portal and 64x32 LED Matrix  
 
-# Configuration:
+## Configuration:
 Add wifi details and API key to secrets.py  
-Other options are in config.py
+Options are held in config.py
