@@ -9,7 +9,6 @@ import gc
 import displayio
 import framebufferio
 import rgbmatrix
-import sys
 
 # Get wifi details and api key from secrets.py file
 try:
@@ -50,13 +49,13 @@ offTimeWE = int(config.offTimeWEstr.replace(":",""))
 onTimeWE = int(config.onTimeWEstr.replace(":",""))
 
 # Display setup message
-setupgroup = displayio.Group()
-setupmsg = "Setting up..."
-setupmsg_area = label.Label(font,text=setupmsg,color=0xFFFFFF)
-setupmsg_area.x = 0
-setupmsg_area.y = 4
-setupgroup.append(setupmsg_area)
-display.show(setupgroup)
+setupGroup = displayio.Group()
+setupMsg = "Setting up..."
+setupMsg_area = label.Label(font,text=setupMsg,color=0xFFFFFF)
+setupMsg_area.x = 0
+setupMsg_area.y = 4
+setupGroup.append(setupMsg_area)
+display.show(setupGroup)
 
 # Gets current server time in 24 hr format ex. 23:24:43
 # Usage: time = getTime()
@@ -65,9 +64,9 @@ def getTime() -> str:
     URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
     
     # Get XML response and parse
-    raw = mp.network.fetch(URL).json()['bustime-response']['tm']
+    response = mp.network.fetch(URL).json()['bustime-response']['tm']
 
-    return raw.split()[1]
+    return response.split()[1]
 
 # Gets current date ex. 20221031
 # Usage: date = getDate()
@@ -76,31 +75,31 @@ def getDate() -> str:
     URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
 
     # Get XML response and parse
-    raw = mp.network.fetch(URL).json()['bustime-response']['tm']
+    response = mp.network.fetch(URL).json()['bustime-response']['tm']
 
-    return raw.split()[0]
+    return response.split()[0]
 
 # Gets certain bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = getSpecificArrivals(['71B','71D'],['3140','8312'])
-def getSpecificArrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def getSpecificArrivals(busLines:list[str], stopNumbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
-    stop_numbers_string = ','.join(stop_numbers)
-    bus_lines_string = ','.join(bus_lines)
+    stopNumString = ','.join(stopNumbers)
+    busLineString = ','.join(busLines)
 
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
-    URL += "&stpid=" + stop_numbers_string
+    URL += "&stpid=" + stopNumString
     URL += "&rtpidatafeed=" "Port Authority Bus"
-    URL += "&rt=" + bus_lines_string
+    URL += "&rt=" + busLineString
     URL += "&top=3"
 
     # Get XML response and parse
     try:
-        raw = mp.network.fetch(URL).json()['bustime-response']['prd']
-        routes = [x['rt'] for x in raw]
-        times = [x['prdctdn'] for x in raw]
-        stops = [x['stpid'] for x in raw]
+        response = mp.network.fetch(URL).json()['bustime-response']['prd']
+        routes = [x['rt'] for x in response]
+        times = [x['prdctdn'] for x in response]
+        stops = [x['stpid'] for x in response]
     except:
         routes = []
         times = []
@@ -111,22 +110,22 @@ def getSpecificArrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[li
 # Gets all bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = getAllArrivals(['3140','8312'])
-def getAllArrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def getAllArrivals(stopNumbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
-    stop_numbers_string = ','.join(stop_numbers)
+    stopNumString = ','.join(stopNumbers)
 
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
-    URL += "&stpid=" + stop_numbers_string
+    URL += "&stpid=" + stopNumString
     URL += "&rtpidatafeed=" "Port Authority Bus"
     URL += "&top=3"
 
     # Get XML response and parse
     try:
-        raw = mp.network.fetch(URL).json()['bustime-response']['prd']
-        routes = [x['rt'] for x in raw]
-        times = [x['prdctdn'] for x in raw]
-        stops = [x['stpid'] for x in raw]
+        response = mp.network.fetch(URL).json()['bustime-response']['prd']
+        routes = [x['rt'] for x in response]
+        times = [x['prdctdn'] for x in response]
+        stops = [x['stpid'] for x in response]
     except:
         routes = []
         times = []
@@ -136,12 +135,12 @@ def getAllArrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str
 
 # Refresh the arrivals and print to LED matrix
 def updateText() -> None:
-    textgroup = displayio.Group()
+    textGroup = displayio.Group()
     header = "LN  STOP  MIN"
-    header_area = label.Label(font,text=header,color=colors[0])
-    header_area.x = 0
-    header_area.y = 4
-    textgroup.append(header_area)
+    headerArea = label.Label(font,text=header,color=colors[0])
+    headerArea.x = 0
+    headerArea.y = 4
+    textGroup.append(headerArea)
 
     # Get data from api call
     if config.getAllLines:
@@ -151,33 +150,33 @@ def updateText() -> None:
 
     if len(routes) == 0:
         # Add route to display (left aligned)
-        noroutemsg = "No arrivals"
-        noroute_area = label.Label(font,text=noroutemsg,color=colors[1])
-        noroute_area.x = 0
-        noroute_area.y = 12
-        textgroup.append(noroute_area)
+        noRouteMsg = "No arrivals"
+        noRouteArea = label.Label(font,text=noRouteMsg,color=colors[1])
+        noRouteArea.x = 0
+        noRouteArea.y = 12
+        textGroup.append(noRouteArea)
 
     for i in range(len(routes)):
         # Add route to display (left aligned)
         route = routes[i]
-        route_area = label.Label(font,text=route,color=colors[1])
-        route_area.x = 0
-        route_area.y = 4+(i+1)*8
-        textgroup.append(route_area)
+        routeArea = label.Label(font,text=route,color=colors[1])
+        routeArea.x = 0
+        routeArea.y = 4+(i+1)*8
+        textGroup.append(routeArea)
 
         # Add destination to display
         stop = "    "+stops[i]
-        stop_area = label.Label(font,text=stop,color=colors[1])
-        stop_area.x = 0
-        stop_area.y = 4+(i+1)*8
-        textgroup.append(stop_area)
+        stopArea = label.Label(font,text=stop,color=colors[1])
+        stopArea.x = 0
+        stopArea.y = 4+(i+1)*8
+        textGroup.append(stopArea)
         
         # Add time to display (right aligned)
         time = times[i]
-        time_area = label.Label(font,text=time,color=colors[1],anchor_point=(1.0,0.0),anchored_position=(65,1+(i+1)*8))
-        textgroup.append(time_area)
+        timeArea = label.Label(font,text=time,color=colors[1],anchor_point=(1.0,0.0),anchored_position=(65,1+(i+1)*8))
+        textGroup.append(timeArea)
 
-    display.show(textgroup)
+    display.show(textGroup)
 
 # Returns whether the screen should be on based on network time
 def shouldBeOn() -> bool:
@@ -204,8 +203,8 @@ def shouldBeOn() -> bool:
     
 # Clear the screen
 def blankScreen() -> None:
-    textgroup = displayio.Group()
-    display.show(textgroup)
+    textGroup = displayio.Group()
+    display.show(textGroup)
 
 # Main loop
 while True:
