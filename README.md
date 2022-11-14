@@ -1,8 +1,6 @@
 # BusDisplay
-ECE1895 Final Project
+ECE1895 Final Project 
 
-Ideas:
-toggle between showing arrival time and minutes until arrival, maybe weather and time
-Turn off at night automatically
-color code lines
-split config file
+Displays upcoming Pittsburgh bus arrivals at user-defined stops based on data from Port Authority's API  
+
+For use with Adafruit Matrix Portal and 64x32 LED Matrix
