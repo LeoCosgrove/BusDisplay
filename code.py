@@ -43,19 +43,19 @@ matrix = rgbmatrix.RGBMatrix(
 display = framebufferio.FramebufferDisplay(matrix)
 font = bitmap_font.load_font("5x7.bdf")
 colors = [0xFF0000, 0xFF7500]
-offTimeWD = int(config.offTimeWDstr.replace(":",""))
-onTimeWD = int(config.onTimeWDstr.replace(":",""))
-offTimeWE = int(config.offTimeWEstr.replace(":",""))
-onTimeWE = int(config.onTimeWEstr.replace(":",""))
+off_time_weekday = int(config.off_time_weekday_str.replace(":",""))
+on_time_weekday = int(config.on_time_weekday_str.replace(":",""))
+off_time_weekend = int(config.off_time_weekend_str.replace(":",""))
+on_time_weekend = int(config.on_time_weekend_str.replace(":",""))
 
 # Display setup message
-setupGroup = displayio.Group()
-setupMsg = "Setting up..."
-setupMsg_area = label.Label(font,text=setupMsg,color=0xFFFFFF)
-setupMsg_area.x = 0
-setupMsg_area.y = 4
-setupGroup.append(setupMsg_area)
-display.show(setupGroup)
+setup_group = displayio.Group()
+setup_msg = "Setting up..."
+setup_msg_area = label.Label(font,text=setup_msg,color=0xFFFFFF)
+setup_msg_area.x = 0
+setup_msg_area.y = 4
+setup_group.append(setup_msg_area)
+display.show(setup_group)
 
 # Gets current server time in 24 hr format ex. 23:24:43
 # Usage: time = getTime()
@@ -82,16 +82,16 @@ def getDate() -> str:
 # Gets certain bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = getSpecificArrivals(['71B','71D'],['3140','8312'])
-def getSpecificArrivals(busLines:list[str], stopNumbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def getSpecificArrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
-    stopNumString = ','.join(stopNumbers)
-    busLineString = ','.join(busLines)
+    stop_num_str = ','.join(stop_numbers)
+    bus_line_str = ','.join(bus_lines)
 
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
-    URL += "&stpid=" + stopNumString
+    URL += "&stpid=" + stop_num_str
     URL += "&rtpidatafeed=" "Port Authority Bus"
-    URL += "&rt=" + busLineString
+    URL += "&rt=" + bus_line_str
     URL += "&top=3"
 
     # Get XML response and parse
@@ -110,13 +110,13 @@ def getSpecificArrivals(busLines:list[str], stopNumbers:list[str]) -> tuple[list
 # Gets all bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
 # Usage: routes, times, stops = getAllArrivals(['3140','8312'])
-def getAllArrivals(stopNumbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+def getAllArrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
-    stopNumString = ','.join(stopNumbers)
+    stop_num_str = ','.join(stop_numbers)
 
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
-    URL += "&stpid=" + stopNumString
+    URL += "&stpid=" + stop_num_str
     URL += "&rtpidatafeed=" "Port Authority Bus"
     URL += "&top=3"
 
@@ -135,48 +135,48 @@ def getAllArrivals(stopNumbers:list[str]) -> tuple[list[str],list[str],list[str]
 
 # Refresh the arrivals and print to LED matrix
 def updateText() -> None:
-    textGroup = displayio.Group()
+    text_group = displayio.Group()
     header = "LN  STOP  MIN"
-    headerArea = label.Label(font,text=header,color=colors[0])
-    headerArea.x = 0
-    headerArea.y = 4
-    textGroup.append(headerArea)
+    header_area = label.Label(font,text=header,color=colors[0])
+    header_area.x = 0
+    header_area.y = 4
+    text_group.append(header_area)
 
     # Get data from api call
-    if config.getAllLines:
-        routes, times, stops = getAllArrivals(config.stopsToShow)
+    if config.get_all_lines:
+        routes, times, stops = getAllArrivals(config.stops_to_show)
     else:
-        routes, times, stops = getSpecificArrivals(config.linesToShow,config.stopsToShow)
+        routes, times, stops = getSpecificArrivals(config.lines_to_show,config.stops_to_show)
 
     if len(routes) == 0:
         # Add route to display (left aligned)
-        noRouteMsg = "No arrivals"
-        noRouteArea = label.Label(font,text=noRouteMsg,color=colors[1])
-        noRouteArea.x = 0
-        noRouteArea.y = 12
-        textGroup.append(noRouteArea)
+        no_route_msg = "No arrivals"
+        no_route_area = label.Label(font,text=no_route_msg,color=colors[1])
+        no_route_area.x = 0
+        no_route_area.y = 12
+        text_group.append(no_route_area)
 
     for i in range(len(routes)):
         # Add route to display (left aligned)
         route = routes[i]
-        routeArea = label.Label(font,text=route,color=colors[1])
-        routeArea.x = 0
-        routeArea.y = 4+(i+1)*8
-        textGroup.append(routeArea)
+        route_area = label.Label(font,text=route,color=colors[1])
+        route_area.x = 0
+        route_area.y = 4+(i+1)*8
+        text_group.append(route_area)
 
         # Add destination to display
         stop = "    "+stops[i]
-        stopArea = label.Label(font,text=stop,color=colors[1])
-        stopArea.x = 0
-        stopArea.y = 4+(i+1)*8
-        textGroup.append(stopArea)
+        stop_area = label.Label(font,text=stop,color=colors[1])
+        stop_area.x = 0
+        stop_area.y = 4+(i+1)*8
+        text_group.append(stop_area)
         
         # Add time to display (right aligned)
         time = times[i]
-        timeArea = label.Label(font,text=time,color=colors[1],anchor_point=(1.0,0.0),anchored_position=(65,1+(i+1)*8))
-        textGroup.append(timeArea)
+        time_area = label.Label(font,text=time,color=colors[1],anchor_point=(1.0,0.0),anchored_position=(65,1+(i+1)*8))
+        text_group.append(time_area)
 
-    display.show(textGroup)
+    display.show(text_group)
 
 # Returns whether the screen should be on based on network time
 def shouldBeOn() -> bool:
@@ -184,27 +184,27 @@ def shouldBeOn() -> bool:
     year = today[:4]
     month = today[4:6]
     day = today[6:8]
-    todayDate = date(int(year),int(month),int(day))
-    dayNum = todayDate.isoweekday()
+    today_date = date(int(year),int(month),int(day))
+    day_num = today_date.isoweekday()
 
-    if(config.fridayIsWeekend):
-        weekday = dayNum <= 4
+    if(config.friday_is_weekend):
+        weekday = day_num <= 4
     else:
-        weekday = dayNum <= 5
+        weekday = day_num <= 5
 
-    currentTime = int(getTime().replace(":",""))
+    current_time = int(getTime().replace(":",""))
     
     if(weekday):
-        shouldBeOn = currentTime in range(onTimeWD,offTimeWD)
+        should_be_on = current_time in range(on_time_weekday,off_time_weekday)
     else:
-        shouldBeOn = currentTime in range(onTimeWE,offTimeWE)
+        should_be_on = current_time in range(on_time_weekend,off_time_weekend)
 
-    return shouldBeOn
+    return should_be_on
     
 # Clear the screen
 def blankScreen() -> None:
-    textGroup = displayio.Group()
-    display.show(textGroup)
+    text_group = displayio.Group()
+    display.show(text_group)
 
 # Main loop
 while True:
