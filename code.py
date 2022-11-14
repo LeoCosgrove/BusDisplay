@@ -58,10 +58,10 @@ setup_group.append(setup_msg_area)
 display.show(setup_group)
 
 # Gets current server time in 24 hr format ex. 23:24:43
-# Usage: time = getTime()
-def getTime() -> str:
+# Usage: time = _get_time()
+def _get_time() -> str:
     # Build URL for API call
-    URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
+    URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
     
     # Get XML response and parse
     response = mp.network.fetch(URL).json()['bustime-response']['tm']
@@ -69,10 +69,10 @@ def getTime() -> str:
     return response.split()[1]
 
 # Gets current date ex. 20221031
-# Usage: date = getDate()
-def getDate() -> str:
+# Usage: date = _get_date()
+def _get_date() -> str:
     # Build URL for API call
-    URL = 'http://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
+    URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
 
     # Get XML response and parse
     response = mp.network.fetch(URL).json()['bustime-response']['tm']
@@ -81,8 +81,8 @@ def getDate() -> str:
 
 # Gets certain bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
-# Usage: routes, times, stops = getSpecificArrivals(['71B','71D'],['3140','8312'])
-def getSpecificArrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+# Usage: routes, times, stops = _get_specific_arrivals(['71B','71D'],['3140','8312'])
+def _get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
     stop_num_str = ','.join(stop_numbers)
     bus_line_str = ','.join(bus_lines)
@@ -109,8 +109,8 @@ def getSpecificArrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[li
 
 # Gets all bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
-# Usage: routes, times, stops = getAllArrivals(['3140','8312'])
-def getAllArrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
+# Usage: routes, times, stops = _get_all_arrivals(['3140','8312'])
+def _get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str]]:
     # Convert list to csv string
     stop_num_str = ','.join(stop_numbers)
 
@@ -134,7 +134,7 @@ def getAllArrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[str
     return routes, times, stops
 
 # Refresh the arrivals and print to LED matrix
-def updateText() -> None:
+def _update_text() -> None:
     text_group = displayio.Group()
     header = "LN  STOP  MIN"
     header_area = label.Label(font,text=header,color=colors[0])
@@ -144,9 +144,9 @@ def updateText() -> None:
 
     # Get data from api call
     if config.get_all_lines:
-        routes, times, stops = getAllArrivals(config.stops_to_show)
+        routes, times, stops = _get_all_arrivals(config.stops_to_show)
     else:
-        routes, times, stops = getSpecificArrivals(config.lines_to_show,config.stops_to_show)
+        routes, times, stops = _get_specific_arrivals(config.lines_to_show,config.stops_to_show)
 
     if len(routes) == 0:
         # Add route to display (left aligned)
@@ -179,8 +179,8 @@ def updateText() -> None:
     display.show(text_group)
 
 # Returns whether the screen should be on based on network time
-def shouldBeOn() -> bool:
-    today = getDate()
+def _should_be_on() -> bool:
+    today = _get_date()
     year = today[:4]
     month = today[4:6]
     day = today[6:8]
@@ -192,7 +192,7 @@ def shouldBeOn() -> bool:
     else:
         weekday = day_num <= 5
 
-    current_time = int(getTime().replace(":",""))
+    current_time = int(_get_time().replace(":",""))
     
     if(weekday):
         should_be_on = current_time in range(on_time_weekday,off_time_weekday)
@@ -202,17 +202,17 @@ def shouldBeOn() -> bool:
     return should_be_on
     
 # Clear the screen
-def blankScreen() -> None:
+def _blank_screen() -> None:
     text_group = displayio.Group()
     display.show(text_group)
 
 # Main loop
 while True:
     try:
-        if(shouldBeOn()):
-            updateText()
+        if(_should_be_on()):
+            _update_text()
         else:
-            blankScreen()
+            _blank_screen()
     except:
         print("Error, retrying")
         continue
