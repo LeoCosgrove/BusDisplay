@@ -1,4 +1,4 @@
-# BusDisplay
+# PghBusDisplay
 ECE1895 Junior Design Final Project  
 
 <img src="https://user-images.githubusercontent.com/24447054/202575720-3fdc24d7-6186-492d-90e0-c60ee0a78af5.png" alt="drawing" width="200"/>
