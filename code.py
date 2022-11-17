@@ -78,11 +78,17 @@ def get_time() -> str:
     URL = 'https://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
     
     # Get XML response and parse
-    response = wifi.get(URL)
-    try:
-        response_str = response.json()['bustime-response']['tm']
-    except KeyError:
-        response_str = ""
+    response = None
+    while response is None:
+        try:
+            response = wifi.get(URL)
+            response_str = response.json()['bustime-response']['tm']
+        except KeyError:
+            response_str = ""
+        except:
+            print("Error occurred, retrying")
+            wifi.reset()
+            gc.collect()
     response.close()
         
     return response_str.split()[1]
@@ -94,11 +100,17 @@ def get_date() -> str:
     URL = 'https://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
 
     # Get XML response and parse
-    response = wifi.get(URL)
-    try:
-        response_str = response.json()['bustime-response']['tm']
-    except KeyError:
-        response_str = ""
+    response = None
+    while response is None:
+        try:
+            response = wifi.get(URL)
+            response_str = response.json()['bustime-response']['tm']
+        except KeyError:
+            response_str = ""
+        except:
+            print("Error occurred, retrying")
+            wifi.reset()
+            gc.collect()
     response.close()
     
     return response_str.split()[0]
@@ -119,11 +131,17 @@ def get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[
     URL += "&top=3"
 
     # Get XML response and parse
-    response = wifi.get(URL)
-    try:
-        response_str = response.json()['bustime-response']['prd']
-    except KeyError:
-        response_str = ""
+    response = None
+    while response is None:
+        try:
+            response = wifi.get(URL)
+            response_str = response.json()['bustime-response']['prd']
+        except KeyError:
+            response_str = ""
+        except:
+            print("Error occurred, retrying")
+            wifi.reset()
+            gc.collect()
     response.close()
 
     routes = [x['rt'] for x in response_str]
@@ -146,11 +164,17 @@ def get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[s
     URL += "&top=3"
 
     # Get XML response and parse
-    response = wifi.get(URL)
-    try:
-        response_str = response.json()['bustime-response']['prd']
-    except KeyError:
-        response_str = ""
+    response = None
+    while response is None:
+        try:
+            response = wifi.get(URL)
+            response_str = response.json()['bustime-response']['prd']
+        except KeyError:
+            response_str = ""
+        except:
+            print("Error occurred, retrying")
+            wifi.reset()
+            gc.collect()
     response.close()
 
     routes = [x['rt'] for x in response_str]
@@ -243,9 +267,10 @@ while True:
             blank_screen()
             sleep_time = 300
         print("Success")
-    except OSError as e:
-        print("Error occurred, retrying - ", e)
+    except:
+        print("Error occurred, retrying")
         wifi.reset()
+        gc.collect()
 
     gc.collect()
     time.sleep(sleep_time)
