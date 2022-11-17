@@ -3,12 +3,16 @@ import config
 import time
 from adafruit_datetime import date
 from adafruit_bitmap_font import bitmap_font
-from adafruit_matrixportal.matrixportal import MatrixPortal
+import busio
+from adafruit_esp32spi import adafruit_esp32spi
+from adafruit_esp32spi import adafruit_esp32spi_wifimanager
 from adafruit_display_text import label
+from digitalio import DigitalInOut
 import gc
 import displayio
 import framebufferio
 import rgbmatrix
+import neopixel
 
 # Get wifi details and api key from secrets.py file
 try:
@@ -18,11 +22,8 @@ except ImportError:
     print("WiFi secrets are kept in secrets.py, please add them there!")
     raise
 
-# Initialize board
-mp = MatrixPortal(status_neopixel=board.NEOPIXEL,debug=False)
+# Define matrix pins
 displayio.release_displays()
-
-# Define matrix pins and objects
 matrix = rgbmatrix.RGBMatrix(
     width=64,
     height=32,
@@ -40,6 +41,19 @@ matrix = rgbmatrix.RGBMatrix(
     latch_pin=board.MTX_LAT,
     output_enable_pin=board.MTX_OE,
 )
+
+# Setup wifi
+esp32_cs = DigitalInOut(board.ESP_CS)
+esp32_ready = DigitalInOut(board.ESP_BUSY)
+esp32_reset = DigitalInOut(board.ESP_RESET)
+spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
+esp = adafruit_esp32spi.ESP_SPIcontrol(spi, esp32_cs, esp32_ready, esp32_reset)
+status_light = neopixel.NeoPixel(
+    board.NEOPIXEL, 1, brightness=0.2
+)
+wifi = adafruit_esp32spi_wifimanager.ESPSPI_WiFiManager(esp, secrets, status_light)
+
+# Initialize variables
 display = framebufferio.FramebufferDisplay(matrix)
 font = bitmap_font.load_font("5x7.bdf")
 colors = [0xFF0000, 0xFF7500]
@@ -61,23 +75,33 @@ display.show(setup_group)
 # Usage: time = _get_time()
 def get_time() -> str:
     # Build URL for API call
-    URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
     
     # Get XML response and parse
-    response = mp.network.fetch(URL).json()['bustime-response']['tm']
-
-    return response.split()[1]
+    response = wifi.get(URL)
+    try:
+        response_str = response.json()['bustime-response']['tm']
+    except KeyError:
+        response_str = ""
+    response.close()
+        
+    return response_str.split()[1]
 
 # Gets current date ex. 20221031
 # Usage: date = _get_date()
 def get_date() -> str:
     # Build URL for API call
-    URL = 'http://truetime.portauthority.org/bustime/api/v3/_get_time?format=json&key='+key
+    URL = 'https://truetime.portauthority.org/bustime/api/v3/gettime?format=json&key='+key
 
     # Get XML response and parse
-    response = mp.network.fetch(URL).json()['bustime-response']['tm']
-
-    return response.split()[0]
+    response = wifi.get(URL)
+    try:
+        response_str = response.json()['bustime-response']['tm']
+    except KeyError:
+        response_str = ""
+    response.close()
+    
+    return response_str.split()[0]
 
 # Gets certain bus lines and their predicted arrivals and stops
 # ex. ['71D'], ['DUE'], ['INBOUND']
@@ -90,20 +114,21 @@ def get_specific_arrivals(bus_lines:list[str], stop_numbers:list[str]) -> tuple[
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
     URL += "&stpid=" + stop_num_str
-    URL += "&rtpidatafeed=" "Port Authority Bus"
+    URL += "&rtpidatafeed=Port%20Authority%20Bus"
     URL += "&rt=" + bus_line_str
     URL += "&top=3"
 
     # Get XML response and parse
+    response = wifi.get(URL)
     try:
-        response = mp.network.fetch(URL).json()['bustime-response']['prd']
-        routes = [x['rt'] for x in response]
-        times = [x['prdctdn'] for x in response]
-        stops = [x['stpid'] for x in response]
-    except:
-        routes = []
-        times = []
-        stops = []
+        response_str = response.json()['bustime-response']['prd']
+    except KeyError:
+        response_str = ""
+    response.close()
+
+    routes = [x['rt'] for x in response_str]
+    times = [x['prdctdn'] for x in response_str]
+    stops = [x['stpid'] for x in response_str]
 
     return routes, times, stops
 
@@ -117,19 +142,20 @@ def get_all_arrivals(stop_numbers:list[str]) -> tuple[list[str],list[str],list[s
     # Build URL for API call
     URL = 'https://truetime.portauthority.org/bustime/api/v3/getpredictions?format=json&key='+key
     URL += "&stpid=" + stop_num_str
-    URL += "&rtpidatafeed=" "Port Authority Bus"
+    URL += "&rtpidatafeed=Port%20Authority%20Bus"
     URL += "&top=3"
 
     # Get XML response and parse
+    response = wifi.get(URL)
     try:
-        response = mp.network.fetch(URL).json()['bustime-response']['prd']
-        routes = [x['rt'] for x in response]
-        times = [x['prdctdn'] for x in response]
-        stops = [x['stpid'] for x in response]
-    except:
-        routes = []
-        times = []
-        stops = []
+        response_str = response.json()['bustime-response']['prd']
+    except KeyError:
+        response_str = ""
+    response.close()
+
+    routes = [x['rt'] for x in response_str]
+    times = [x['prdctdn'] for x in response_str]
+    stops = [x['stpid'] for x in response_str]
 
     return routes, times, stops
 
@@ -187,14 +213,14 @@ def should_be_on() -> bool:
     today_date = date(int(year),int(month),int(day))
     day_num = today_date.isoweekday()
 
-    if(config.friday_is_weekend):
+    if config.friday_is_weekend:
         weekday = day_num <= 4
     else:
         weekday = day_num <= 5
 
     current_time = int(get_time().replace(":",""))
     
-    if(weekday):
+    if weekday:
         should_be_on = current_time in range(on_time_weekday,off_time_weekday)
     else:
         should_be_on = current_time in range(on_time_weekend,off_time_weekend)
@@ -206,16 +232,20 @@ def blank_screen() -> None:
     text_group = displayio.Group()
     display.show(text_group)
 
+sleep_time = 20
 # Main loop
 while True:
     try:
-        if(should_be_on()):
+        if should_be_on():
             update_text()
+            sleep_time = 20
         else:
             blank_screen()
-    except:
-        print("Error, retrying")
-        pass
+            sleep_time = 300
+        print("Success")
+    except OSError as e:
+        print("Error occurred, retrying - ", e)
+        wifi.reset()
 
     gc.collect()
-    time.sleep(15)
+    time.sleep(sleep_time)
